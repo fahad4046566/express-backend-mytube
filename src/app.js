@@ -1,8 +1,14 @@
+console.log("✅ app.js loaded with /api/ping route");
+
 import express from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 
 const app = express();
+// Temporary test route – seedha yahan, bina multer ke
+app.get("/api/ping", (req, res) => {
+  res.json({ message: "pong" });
+});
 // configrations
 app.use(
   cors({
