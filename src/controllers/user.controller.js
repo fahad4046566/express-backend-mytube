@@ -17,11 +17,13 @@ const registerUser = asyncHandler(async (req, res) => {
   if (existUser) {
     throw new ApiError(409, "User with email or username already exists");
   }
-  const avatarLocalPath = req.files?.avatar?.[0]?.path;
+  const avatarLocalPath = req.files?.avatar?.[0]?.buffer; // multer se file buffer milta hai, jise hum directly cloudinary me upload kar sakte hain without saving it to disk, isliye humne multer ko memory storage ke sath configure kiya hai
+  // path;
   if (!avatarLocalPath) {
     throw new ApiError(400, "Avatar image is required");
   }
-  const coverImageLocalPath = req.files?.coverImage?.[0]?.path;
+  const coverImageLocalPath = req.files?.coverImage?.[0]?.buffer; // multer se file buffer milta hai, jise hum directly cloudinary me upload kar sakte hain without saving it to disk, isliye humne multer ko memory storage ke sath configure kiya hai
+  // path;
 
   const avatarUrl = await uploadOnCloudinary(avatarLocalPath);
   if (!avatarUrl) {
