@@ -1,4 +1,3 @@
-console.log("✅ app.js loaded with /api/ping route");
 
 import express from "express";
 import cookieParser from "cookie-parser";
