@@ -1,11 +1,15 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import {
+  deleteImageFromCloudinary,
+  uploadOnCloudinary,
+} from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
 import { json } from "express";
 import mongoose from "mongoose";
+import getPublicIdFromDynamicUrl from "../utils/PublicIdFromUrl.js";
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
@@ -21,10 +25,12 @@ const generateAccessAndRefreshToken = async (userId) => {
   }
 };
 
+
+
 const registerUser = asyncHandler(async (req, res) => {
   const { username, email, fullName, password } = req.body;
   if (
-    [username, email, fullName, password].some((field) => field.trim() === "")
+    [username, email, fullName, password].some((field) => !field?.trim())
   ) {
     throw new ApiError(400, "All fields are required");
   }
@@ -89,7 +95,9 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new ApiError(401, "Invalid User Credentials");
   }
 
-  const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user._id);
+  const { accessToken, refreshToken } = await generateAccessAndRefreshToken(
+    user._id,
+  );
   const loggedInUser = await User.findById(user._id).select(
     "-password -refreshToken",
   );
@@ -158,14 +166,17 @@ const refreshAcesstoken = asyncHandler(async (req, res) => {
     if (incomingRefreshAcesstoken !== user?.refreshToken) {
       throw new ApiError(401, "Refresh token is expired or used");
     }
-   const loggedInUser = await User.findById(user._id).select("-password -refreshToken");
+    const loggedInUser = await User.findById(user._id).select(
+      "-password -refreshToken",
+    );
     const options = {
       httpOnly: true,
       // secure: true,
-       secure: process.env.NODE_ENV === "production", 
+      secure: process.env.NODE_ENV === "production",
     };
 
-    const { accessToken,  refreshToken: newRefreshToken } = await generateAccessAndRefreshToken(user._id);
+    const { accessToken, refreshToken: newRefreshToken } =
+      await generateAccessAndRefreshToken(user._id);
 
     return res
       .status(200)
@@ -175,9 +186,9 @@ const refreshAcesstoken = asyncHandler(async (req, res) => {
         new ApiResponse(
           200,
           {
-            user :loggedInUser,
+            user: loggedInUser,
             accessToken,
-            refreshToken: newRefreshToken
+            refreshToken: newRefreshToken,
           },
           "Access Token refrehed Successfully",
         ),
@@ -206,10 +217,10 @@ const changePassword = asyncHandler(async (req, res) => {
 
 const getCurrentUser = asyncHandler(async (req, res) => {
   return res.status(200).json({
-  success: true,
-  data: req.user,
-  message: "Current user fetched successfully"
-});
+    success: true,
+    data: req.user,
+    message: "Current user fetched successfully",
+  });
 });
 
 const updateAccountDetails = asyncHandler(async (req, res) => {
@@ -217,7 +228,7 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
   if (!fullName || !email) {
     throw new ApiError(400, "All fields are required");
   }
-  const user =await User.findByIdAndUpdate(
+  const user = await User.findByIdAndUpdate(
     req.user?._id,
     {
       $set: {
@@ -225,8 +236,8 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
         email,
       },
     },
-    {new: true}, // this is used for show updated document
-  ).select("-password -refreshToken");  ;
+    { new: true }, // this is used for show updated document
+  ).select("-password -refreshToken");
 
   return res
     .status(200)
@@ -234,7 +245,8 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
 });
 
 const updateAvatar = asyncHandler(async (req, res) => {
-  const avatarBuffer  = req.file?.buffer;
+  const avatarBuffer = req.file?.buffer;
+
   if (!avatarBuffer) {
     throw new ApiError(400, "Avatar file is missing");
   }
@@ -249,8 +261,19 @@ const updateAvatar = asyncHandler(async (req, res) => {
         avatar: avatarUrl,
       },
     },
-    { returnDocument: 'after' },
-  ).select("-password -refreshToken");;
+    { returnDocument: "after" },
+  ).select("-password -refreshToken");
+  const oldAvatar = req.user.avatar;
+  
+  try {
+    if (oldAvatar) {
+      const publicId = getPublicIdFromDynamicUrl(oldAvatar);
+      if (publicId)  await deleteImageFromCloudinary(publicId,"image");
+    }
+  } catch (err) {
+    console.error("Failed to delete from Cloudinary:", err);
+  }
+
   return res
     .status(200)
     .json(new ApiResponse(200, user, "Avatar changed Successfully"));
@@ -271,8 +294,19 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
         coverImage: coverImageUrl,
       },
     },
-    {returnDocument: 'after'},
-  ).select("-password -refreshToken");;
+    { returnDocument: "after" },
+  ).select("-password -refreshToken");
+
+    const oldCoverImage = req.user.coverImage;
+  
+  try {
+    if (oldCoverImage) {
+      const publicId = getPublicIdFromDynamicUrl(oldCoverImage);
+      if (publicId)  await deleteImageFromCloudinary(publicId,"image");
+    }
+  } catch (err) {
+    console.error("Failed to delete from Cloudinary:", err);
+  }
   return res
     .status(200)
     .json(new ApiResponse(200, user, "Cover Image changed Successfully"));
@@ -340,14 +374,16 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
   }
   return res
     .status(200)
-    .json(new ApiResponse(200, channel[0], "User channel fetched successfully"));
+    .json(
+      new ApiResponse(200, channel[0], "User channel fetched successfully"),
+    );
 });
 
 const getWatchHistory = asyncHandler(async (req, res) => {
   const user = await User.aggregate([
     {
       $match: {
-       _id: req.user._id
+        _id: req.user._id,
       },
     },
     {
@@ -360,40 +396,41 @@ const getWatchHistory = asyncHandler(async (req, res) => {
           {
             $lookup: {
               from: "users",
-              localField:"owner",
-              foreignField:"_id",
-              as : "owner",
-              pipeline:[
+              localField: "owner",
+              foreignField: "_id",
+              as: "owner",
+              pipeline: [
                 {
-                  $project:{
+                  $project: {
                     fullName: 1,
-                    username :1,
-                    avatar :1
-                  }
-                }
-              ]
+                    username: 1,
+                    avatar: 1,
+                  },
+                },
+              ],
             },
           },
           {
-            $addFields:{
-              owner:{
-                $first : "$owner"
-              }
-            }
-          }
+            $addFields: {
+              owner: {
+                $first: "$owner",
+              },
+            },
+          },
         ],
       },
     },
   ]);
-  
+
   return res
-  .status(200)
-  .json(
-    new ApiResponse(
-      200,
-      user[0].watchHistory,"watch history fetched successfully"
-    )
-  ) 
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        user[0].watchHistory,
+        "watch history fetched successfully",
+      ),
+    );
 });
 export {
   registerUser,
@@ -406,6 +443,5 @@ export {
   updateAvatar,
   updateUserCoverImage,
   getUserChannelProfile,
-  getWatchHistory
-
+  getWatchHistory,
 };
