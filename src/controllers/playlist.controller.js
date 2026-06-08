@@ -1,35 +1,53 @@
-import { asyncHandler } from "../utils/asyncHandler";
+import mongoose, {isValidObjectId} from "mongoose"
+import {Playlist} from "../models/playlist.model.js"
+import {ApiError} from "../utils/ApiError.js"
+import {ApiResponse} from "../utils/ApiResponse.js"
+import {asyncHandler} from "../utils/asyncHandler.js"
 
-const createPLayList = asyncHandler(async (req, res) => {
-  const { name , description } = req.body;
-});
 
-const getUserPlayList = asyncHandler(async (req, res) => {
-  const { userId } = req.params;
-});
+const createPlaylist = asyncHandler(async (req, res) => {
+    const {name, description} = req.body
 
-const getUserPlayListById = asyncHandler(async (req, res) => {
-  const { playListId } = req.params;
+    //TODO: create playlist
 })
-const addVideoToPlayList = asyncHandler(async (req, res) => {
-  const {playListId, videoId } = req.params;
-});
-const removeVideoToPlayList = asyncHandler(async (req, res) => {
-  const {playListId, videoId } = req.params;
-});
-const deletePlayList = asyncHandler(async (req, res) => {
-  const {playListId } = req.params;
-});
-const updatePlayList = asyncHandler(async (req, res) => {
-  const {playListId } = req.params;
-  const { name , description } = req.body;
-});
+
+const getUserPlaylists = asyncHandler(async (req, res) => {
+    const {userId} = req.params
+    //TODO: get user playlists
+})
+
+const getPlaylistById = asyncHandler(async (req, res) => {
+    const {playlistId} = req.params
+    //TODO: get playlist by id
+})
+
+const addVideoToPlaylist = asyncHandler(async (req, res) => {
+    const {playlistId, videoId} = req.params
+})
+
+const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
+    const {playlistId, videoId} = req.params
+    // TODO: remove video from playlist
+
+})
+
+const deletePlaylist = asyncHandler(async (req, res) => {
+    const {playlistId} = req.params
+    // TODO: delete playlist
+})
+
+const updatePlaylist = asyncHandler(async (req, res) => {
+    const {playlistId} = req.params
+    const {name, description} = req.body
+    //TODO: update playlist
+})
 
 export {
-    getUserPlayList,
-    getUserPlayListById,
-    addVideoToPlayList,
-    removeVideoToPlayList,
-    deletePlayList,
-    updatePlayList
+    createPlaylist,
+    getUserPlaylists,
+    getPlaylistById,
+    addVideoToPlaylist,
+    removeVideoFromPlaylist,
+    deletePlaylist,
+    updatePlaylist
 }
